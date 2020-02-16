@@ -622,7 +622,7 @@ static int acl__check_dollar(const char *topic, int access)
 }
 
 
-int mosquitto_acl_check(struct mosquitto_db *db, struct mosquitto *context, const char *topic, long payloadlen, void* payload, int qos, bool retain, int access)
+int mosquitto_acl_check(struct mosquitto_db *db, struct mosquitto *context, const char *topic, long payloadlen, void* payload, int qos, bool retain, mosquitto_property *properties, int access)
 {
 	int rc;
 	int i;
@@ -657,6 +657,7 @@ int mosquitto_acl_check(struct mosquitto_db *db, struct mosquitto *context, cons
 	msg.payload = payload;
 	msg.qos = qos;
 	msg.retain = retain;
+	msg.properties = properties;
 
 	for(i=0; i<opts->auth_plugin_config_count; i++){
 		rc = acl__check_single(&opts->auth_plugin_configs[i], context, &msg, access);

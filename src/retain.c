@@ -142,7 +142,7 @@ static int retain__process(struct mosquitto_db *db, struct mosquitto__retainhier
 	retained = branch->retained;
 
 	rc = mosquitto_acl_check(db, context, retained->topic, retained->payloadlen, UHPA_ACCESS(retained->payload, retained->payloadlen),
-			retained->qos, retained->retain, MOSQ_ACL_READ);
+			retained->qos, retained->retain, properties, MOSQ_ACL_READ);
 	if(rc == MOSQ_ERR_ACL_DENIED){
 		return MOSQ_ERR_SUCCESS;
 	}else if(rc != MOSQ_ERR_SUCCESS){
@@ -162,7 +162,7 @@ static int retain__process(struct mosquitto_db *db, struct mosquitto__retainhier
 		if(rc) return rc;
 
 		rc = mosquitto_acl_check(db, &retain_ctxt, retained->topic, retained->payloadlen, UHPA_ACCESS(retained->payload, retained->payloadlen),
-				retained->qos, retained->retain, MOSQ_ACL_WRITE);
+				retained->qos, retained->retain, properties, MOSQ_ACL_WRITE);
 		if(rc == MOSQ_ERR_ACL_DENIED){
 			return MOSQ_ERR_SUCCESS;
 		}else if(rc != MOSQ_ERR_SUCCESS){

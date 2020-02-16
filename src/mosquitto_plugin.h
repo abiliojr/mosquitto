@@ -48,6 +48,7 @@ struct mosquitto_acl_msg {
 	long payloadlen;
 	int qos;
 	bool retain;
+	mosquitto_property *properties;
 };
 
 /*

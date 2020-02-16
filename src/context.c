@@ -178,6 +178,7 @@ void context__send_will(struct mosquitto_db *db, struct mosquitto *ctxt)
 					ctxt->will->msg.payload,
 					ctxt->will->msg.qos,
 					ctxt->will->msg.retain,
+					NULL,
 					MOSQ_ACL_WRITE) == MOSQ_ERR_SUCCESS){
 
 			/* Unexpected disconnect, queue the client will. */

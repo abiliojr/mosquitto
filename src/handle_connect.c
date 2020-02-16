@@ -89,7 +89,7 @@ void connection_check_acl(struct mosquitto_db *db, struct mosquitto *context, st
 		if(msg_tail->direction == mosq_md_out){
 			if(mosquitto_acl_check(db, context, msg_tail->store->topic,
 								   msg_tail->store->payloadlen, UHPA_ACCESS(msg_tail->store->payload, msg_tail->store->payloadlen),
-								   msg_tail->store->qos, msg_tail->store->retain, MOSQ_ACL_READ) != MOSQ_ERR_SUCCESS){
+								   msg_tail->store->qos, msg_tail->store->retain, msg_tail->store->properties, MOSQ_ACL_READ) != MOSQ_ERR_SUCCESS){
 
 				DL_DELETE((*head), msg_tail);
 				db__msg_store_ref_dec(db, &msg_tail->store);
