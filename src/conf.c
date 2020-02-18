@@ -686,7 +686,7 @@ int config__read(struct mosquitto_db *db, struct mosquitto__config *config, bool
 						break;
 					}else{
 						/* Version 4 has optional unpwd checks. */
-						if(plugin->unpwd_check_v4 != NULL){
+						if(plugin->version >= 4 && plugin->unpwd_check != NULL){
 							config->listeners[i].security_options.allow_anonymous = false;
 							break;
 						}
@@ -718,7 +718,7 @@ int config__read(struct mosquitto_db *db, struct mosquitto__config *config, bool
 					break;
 				}else{
 					/* Version 4 has optional unpwd checks. */
-					if(plugin->unpwd_check_v4 != NULL){
+					if(plugin->version >= 4 && plugin->unpwd_check != NULL){
 						config->security_options.allow_anonymous = false;
 						break;
 					}
