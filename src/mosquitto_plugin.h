@@ -21,7 +21,7 @@ Contributors:
 extern "C" {
 #endif
 
-#define MOSQ_AUTH_PLUGIN_VERSION 4
+#define MOSQ_AUTH_PLUGIN_VERSION 5
 
 #define MOSQ_ACL_NONE 0x00
 #define MOSQ_ACL_READ 0x01
@@ -252,7 +252,7 @@ int mosquitto_auth_acl_check(void *user_data, int access, struct mosquitto *clie
  *	MOSQ_ERR_UNKNOWN for an application specific error.
  *	MOSQ_ERR_PLUGIN_DEFER if your plugin does not wish to handle this check.
  */
-int mosquitto_auth_unpwd_check(void *user_data, struct mosquitto *client, const char *username, const char *password);
+int mosquitto_auth_unpwd_check(void *user_data, struct mosquitto *client, const char *username, const char *password, mosquitto_property *properties);
 
 
 /*

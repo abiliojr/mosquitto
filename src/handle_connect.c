@@ -767,7 +767,7 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 			 * mosquitto_client_username() functions work, but is hacky */
 			context->id = client_id;
 			context->username = username;
-			rc = mosquitto_unpwd_check(db, context, username, password);
+			rc = mosquitto_unpwd_check(db, context, username, password, properties);
 			context->username = NULL;
 			context->id = NULL;
 			switch(rc){

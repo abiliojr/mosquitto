@@ -41,15 +41,13 @@ void LIB_ERROR(void)
 #endif
 }
 
-typedef int (*FUNC_auth_plugin_init_v4)(void **, struct mosquitto_opt *, int);
-typedef int (*FUNC_auth_plugin_cleanup_v4)(void *, struct mosquitto_opt *, int);
-typedef int (*FUNC_auth_plugin_security_init_v4)(void *, struct mosquitto_opt *, int, bool);
-typedef int (*FUNC_auth_plugin_security_cleanup_v4)(void *, struct mosquitto_opt *, int, bool);
-typedef int (*FUNC_auth_plugin_acl_check_v4)(void *, int, struct mosquitto *, struct mosquitto_acl_msg *);
-typedef int (*FUNC_auth_plugin_unpwd_check_v4)(void *, struct mosquitto *, const char *, const char *);
-typedef int (*FUNC_auth_plugin_psk_key_get_v4)(void *, struct mosquitto *, const char *, const char *, char *, int);
-typedef int (*FUNC_auth_plugin_auth_start_v4)(void *, struct mosquitto *, const char *, bool, const void *, uint16_t, void **, uint16_t *);
-typedef int (*FUNC_auth_plugin_auth_continue_v4)(void *, struct mosquitto *, const char *, const void *, uint16_t, void **, uint16_t *);
+typedef int (*FUNC_auth_plugin_init_v2)(void **, struct mosquitto_auth_opt *, int);
+typedef int (*FUNC_auth_plugin_cleanup_v2)(void *, struct mosquitto_auth_opt *, int);
+typedef int (*FUNC_auth_plugin_security_init_v2)(void *, struct mosquitto_auth_opt *, int, bool);
+typedef int (*FUNC_auth_plugin_security_cleanup_v2)(void *, struct mosquitto_auth_opt *, int, bool);
+typedef int (*FUNC_auth_plugin_acl_check_v2)(void *, const char *, const char *, const char *, int);
+typedef int (*FUNC_auth_plugin_unpwd_check_v2)(void *, const char *, const char *);
+typedef int (*FUNC_auth_plugin_psk_key_get_v2)(void *, const char *, const char *, char *, int);
 
 typedef int (*FUNC_auth_plugin_init_v3)(void **, struct mosquitto_opt *, int);
 typedef int (*FUNC_auth_plugin_cleanup_v3)(void *, struct mosquitto_opt *, int);
@@ -59,13 +57,10 @@ typedef int (*FUNC_auth_plugin_acl_check_v3)(void *, int, const struct mosquitto
 typedef int (*FUNC_auth_plugin_unpwd_check_v3)(void *, const struct mosquitto *, const char *, const char *);
 typedef int (*FUNC_auth_plugin_psk_key_get_v3)(void *, const struct mosquitto *, const char *, const char *, char *, int);
 
-typedef int (*FUNC_auth_plugin_init_v2)(void **, struct mosquitto_auth_opt *, int);
-typedef int (*FUNC_auth_plugin_cleanup_v2)(void *, struct mosquitto_auth_opt *, int);
-typedef int (*FUNC_auth_plugin_security_init_v2)(void *, struct mosquitto_auth_opt *, int, bool);
-typedef int (*FUNC_auth_plugin_security_cleanup_v2)(void *, struct mosquitto_auth_opt *, int, bool);
-typedef int (*FUNC_auth_plugin_acl_check_v2)(void *, const char *, const char *, const char *, int);
-typedef int (*FUNC_auth_plugin_unpwd_check_v2)(void *, const char *, const char *);
-typedef int (*FUNC_auth_plugin_psk_key_get_v2)(void *, const char *, const char *, char *, int);
+typedef int (*FUNC_auth_plugin_auth_start_v4)(void *, struct mosquitto *, const char *, bool, const void *, uint16_t, void **, uint16_t *);
+typedef int (*FUNC_auth_plugin_auth_continue_v4)(void *, struct mosquitto *, const char *, const void *, uint16_t, void **, uint16_t *);
+
+typedef int (*FUNC_auth_plugin_unpwd_check_v5)(void *, const struct mosquitto *, const char *, const char *, mosquitto_property *properties);
 
 
 static int plugin_init_shim_v2(struct mosquitto__auth_plugin *plugin, struct mosquitto_opt *opts, int opt_count)
@@ -104,7 +99,7 @@ static int acl_check_shim_v2(struct mosquitto__auth_plugin *plugin, int access, 
 				(plugin->user_data, client->id, username, msg->topic, access);
 }
 
-static int unpwd_check_shim_v2(struct mosquitto__auth_plugin *plugin, struct mosquitto *client, const char *username, const char *password)
+static int unpwd_check_shim_v2(struct mosquitto__auth_plugin *plugin, struct mosquitto *client, const char *username, const char *password, mosquitto_property *properties)
 {
 	return ((FUNC_auth_plugin_unpwd_check_v2) plugin->unpwd_check_real)
 				(plugin->user_data, username, password);
@@ -146,7 +141,7 @@ static int acl_check_shim_v3(struct mosquitto__auth_plugin *plugin, int access, 
 				(plugin->user_data, access, client, msg);
 }
 
-static int unpwd_check_shim_v3(struct mosquitto__auth_plugin *plugin, struct mosquitto *client, const char *username, const char *password)
+static int unpwd_check_shim_v3(struct mosquitto__auth_plugin *plugin, struct mosquitto *client, const char *username, const char *password, mosquitto_property *properties)
 {
 	return ((FUNC_auth_plugin_unpwd_check_v3) plugin->unpwd_check_real)
 				(plugin->user_data, client, username, password);
@@ -170,7 +165,13 @@ static int auth_continue_shim_v4(struct mosquitto__auth_plugin *plugin, struct m
 				(plugin->user_data, client, method, data_in, data_in_len, data_out, data_out_len);
 }
 
-static int unpwd_check_shim_dummy(struct mosquitto__auth_plugin *plugin, struct mosquitto *client, const char *username, const char *password)
+static int unpwd_check_shim_v5(struct mosquitto__auth_plugin *plugin, struct mosquitto *client, const char *username, const char *password, mosquitto_property *properties)
+{
+	return ((FUNC_auth_plugin_unpwd_check_v5) plugin->unpwd_check_real)
+				(plugin->user_data, client, username, password, properties);
+}
+
+static int unpwd_check_shim_dummy(struct mosquitto__auth_plugin *plugin, struct mosquitto *client, const char *username, const char *password, mosquitto_property *properties)
 {
 	return MOSQ_ERR_INVAL;
 }
@@ -189,6 +190,7 @@ static int auth_continue_shim_dummy(struct mosquitto__auth_plugin *plugin, struc
 {
 	return MOSQ_ERR_NOT_SUPPORTED;
 }
+
 static void set_shim_lib_v2(struct mosquitto__auth_plugin *plugin)
 {
 	plugin->plugin_init = (void *) plugin_init_shim_v2;
@@ -216,6 +218,11 @@ static void set_shim_lib_v4(struct mosquitto__auth_plugin *plugin)
 	set_shim_lib_v3(plugin);
 	if (!plugin->auth_start) plugin->auth_start = (void *) auth_start_shim_v4;
 	if (!plugin->auth_continue) plugin->auth_continue = (void *) auth_continue_shim_v4;
+}
+
+static void set_shim_lib_v5(struct mosquitto__auth_plugin *plugin) {
+	set_shim_lib_v4(plugin);
+	if (!plugin->unpwd_check) plugin->unpwd_check = (void *) unpwd_check_shim_v5;
 }
 
 static const char *check_for_required_functions(struct mosquitto__auth_plugin *plugin)
@@ -311,6 +318,9 @@ static int security__load(struct mosquitto__auth_plugin *plugin, struct mosquitt
 			break;
 		case 4:
 			set_shim_lib_v4(plugin);
+			break;
+		case 5:
+			set_shim_lib_v5(plugin);
 			break;
 	}
 
@@ -643,7 +653,7 @@ int mosquitto_acl_check(struct mosquitto_db *db, struct mosquitto *context, cons
 	return rc;
 }
 
-int mosquitto_unpwd_check(struct mosquitto_db *db, struct mosquitto *context, const char *username, const char *password)
+int mosquitto_unpwd_check(struct mosquitto_db *db, struct mosquitto *context, const char *username, const char *password, mosquitto_property *properties)
 {
 	int rc;
 	int i;
@@ -668,7 +678,8 @@ int mosquitto_unpwd_check(struct mosquitto_db *db, struct mosquitto *context, co
 				&opts->auth_plugin_configs[i].plugin,
 				context,
 				username,
-				password);
+				password,
+				properties);
 
 		if(rc != MOSQ_ERR_PLUGIN_DEFER){
 			return rc;

@@ -143,7 +143,7 @@ typedef int (*FUNC_auth_plugin_cleanup)(void *, struct mosquitto_opt *, int);
 typedef int (*FUNC_auth_plugin_security_init)(void *, struct mosquitto_opt *, int, bool);
 typedef int (*FUNC_auth_plugin_security_cleanup)(void *, struct mosquitto_opt *, int, bool);
 typedef int (*FUNC_auth_plugin_acl_check)(void *, int, struct mosquitto *, struct mosquitto_acl_msg *);
-typedef int (*FUNC_auth_plugin_unpwd_check)(void *, struct mosquitto *, const char *, const char *);
+typedef int (*FUNC_auth_plugin_unpwd_check)(void *, struct mosquitto *, const char *, const char *, mosquitto_property *);
 typedef int (*FUNC_auth_plugin_psk_key_get)(void *, struct mosquitto *, const char *, const char *, char *, int);
 typedef int (*FUNC_auth_plugin_auth_start)(void *, struct mosquitto *, const char *, bool, const void *, uint16_t, void **, uint16_t *);
 typedef int (*FUNC_auth_plugin_auth_continue)(void *, struct mosquitto *, const char *, const void *, uint16_t, void **, uint16_t *);
@@ -715,7 +715,7 @@ int mosquitto_security_init(struct mosquitto_db *db, bool reload);
 int mosquitto_security_apply(struct mosquitto_db *db);
 int mosquitto_security_cleanup(struct mosquitto_db *db, bool reload);
 int mosquitto_acl_check(struct mosquitto_db *db, struct mosquitto *context, const char *topic, long payloadlen, void* payload, int qos, bool retain, mosquitto_property *properties, int access);
-int mosquitto_unpwd_check(struct mosquitto_db *db, struct mosquitto *context, const char *username, const char *password);
+int mosquitto_unpwd_check(struct mosquitto_db *db, struct mosquitto *context, const char *username, const char *password, mosquitto_property *properties);
 int mosquitto_psk_key_get(struct mosquitto_db *db, struct mosquitto *context, const char *hint, const char *identity, char *key, int max_key_len);
 
 int mosquitto_security_init_default(struct mosquitto_db *db, bool reload);
