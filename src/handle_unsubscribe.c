@@ -23,6 +23,7 @@ Contributors:
 #include "memory_mosq.h"
 #include "mqtt_protocol.h"
 #include "packet_mosq.h"
+#include "persist_plugin.h"
 #include "send_mosq.h"
 
 int handle__unsubscribe(struct mosquitto_db *db, struct mosquitto *context)
@@ -95,7 +96,14 @@ int handle__unsubscribe(struct mosquitto_db *db, struct mosquitto *context)
 			mosquitto__free(reason_codes);
 			return 1;
 		}
-
+#ifdef WITH_PERSISTENCE
+			if(!context->clean_session){
+				if(persist__sub_delete(db, context->id, sub)){
+					mosquitto__free(sub);
+					return 1;
+				}
+			}
+#endif
 		log__printf(NULL, MOSQ_LOG_DEBUG, "\t%s", sub);
 		rc = sub__remove(db, context, sub, db->subs, &reason);
 		log__printf(NULL, MOSQ_LOG_UNSUBSCRIBE, "%s %s", context->id, sub);

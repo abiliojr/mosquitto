@@ -260,12 +260,12 @@ int handle__publish(struct mosquitto_db *db, struct mosquitto *context)
 
 	switch(qos){
 		case 0:
-			rc2 = sub__messages_queue(db, context->id, topic, qos, retain, &stored);
+			rc2 = sub__messages_queue(db, context->id, topic, qos, retain, &stored, true);
 			if(rc2 > 0) rc = 1;
 			break;
 		case 1:
 			util__decrement_receive_quota(context);
-			rc2 = sub__messages_queue(db, context->id, topic, qos, retain, &stored);
+			rc2 = sub__messages_queue(db, context->id, topic, qos, retain, &stored, true);
 			if(rc2 == MOSQ_ERR_SUCCESS || context->protocol != mosq_p_mqtt5){
 				if(send__puback(context, mid, 0)) rc = 1;
 			}else if(rc2 == MOSQ_ERR_NO_SUBSCRIBERS){

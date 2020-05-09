@@ -103,12 +103,25 @@ int retain__store(struct mosquitto_db *db, const char *topic, struct mosquitto_m
 	}
 #endif
 	if(retainhier->retained){
+#ifdef WITH_PERSISTENCE
+		if(persist){
+			/* FIXME */ persist__retain_delete(db, hier->retained->db_id);
+		}
+#endif
 		db__msg_store_ref_dec(db, &retainhier->retained);
 #ifdef WITH_SYS_TREE
 		db->retained_count--;
 #endif
 	}
 	if(stored->payloadlen){
+#ifdef WITH_PERSISTENCE
+			if(strncmp(topic, "$SYS", 4)){
+				if(persist){
+					/* FIXME */ persist__msg_store_add(db, stored);
+					/* FIXME */ persist__retain_add(db, stored->db_id);
+				}
+			}
+#endif
 		retainhier->retained = stored;
 		db__msg_store_ref_inc(retainhier->retained);
 #ifdef WITH_SYS_TREE

@@ -23,6 +23,7 @@ Contributors:
 #include "memory_mosq.h"
 #include "mqtt_protocol.h"
 #include "packet_mosq.h"
+#include "persist_plugin.h"
 #include "property_mosq.h"
 
 
@@ -164,6 +165,15 @@ int handle__subscribe(struct mosquitto_db *db, struct mosquitto *context)
 			}
 
 			if(qos != 0x80){
+#ifdef WITH_PERSISTENCE
+				if(!context->clean_session){
+					rc2 = persist__sub_add(db, context->id, sub, qos);
+					if(rc2){
+						rc = rc2;
+						/* FIXME */
+					}
+				}
+#endif
 				rc2 = sub__add(db, context, sub, qos, subscription_identifier, subscription_options, &db->subs);
 				if(rc2 > 0){
 					mosquitto__free(sub);

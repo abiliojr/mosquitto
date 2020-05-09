@@ -24,6 +24,7 @@ Contributors:
 #include "mqtt_protocol.h"
 #include "memory_mosq.h"
 #include "packet_mosq.h"
+#include "persist_plugin.h"
 #include "property_mosq.h"
 #include "send_mosq.h"
 #include "sys_tree.h"

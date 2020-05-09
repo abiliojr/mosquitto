@@ -769,17 +769,24 @@ log_timestamp_format %Y-%m-%dT%H:%M:%S
 				<term><option>persistence</option> [ true | false ]</term>
 				<listitem>
 					<para>If <replaceable>true</replaceable>, connection,
-						subscription and message data will be written to the
-						disk in mosquitto.db at the location dictated by
-						persistence_location. When mosquitto is restarted, it
-						will reload the information stored in mosquitto.db. The
-						data will be written to disk when mosquitto closes and
-						also at periodic intervals as defined by
-						autosave_interval. Writing of the persistence database
-						may also be forced by sending mosquitto the SIGUSR1
-						signal. If <replaceable>false</replaceable>, the data
-						will be stored in memory only. Defaults to
-						<replaceable>false</replaceable>.</para>
+						subscription and message data will be written to disk.
+						There are two options for persistence, either the
+						build-in persistence provided as part of mosquitto, or
+						a persistence plugin. See the
+						<option>persistence_plugin</option> option.</para>
+					<para>If using built-in persistence data is stored by
+						default in the file mosquitto.db at the location
+						dictated by <option>persistence_location</option>. When
+						mosquitto is restarted, it will reload the persistence
+						information stored in mosquitto.db. The data will be
+						written to disk when mosquitto closes and also at
+						periodic intervals as defined by autosave_interval.
+						Writing of the persistence database may also be forced
+						by sending mosquitto the SIGUSR1 signal.</para>
+					<para>If <option>persistence</option> is
+						<replaceable>false</replaceable>, the data will be
+						stored in memory only. This is the default
+						value.</para>
 					<para>The persistence file may change its format in a new
 						version. The broker can currently read all old formats,
 						but will only save in the latest format. It should always

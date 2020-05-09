@@ -54,6 +54,7 @@ Contributors:
 #include "mosquitto_broker_internal.h"
 #include "memory_mosq.h"
 #include "mqtt_protocol.h"
+#include "persist_plugin.h"
 #include "util_mosq.h"
 
 #include "utlist.h"

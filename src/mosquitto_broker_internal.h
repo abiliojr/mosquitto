@@ -51,6 +51,7 @@ Contributors:
 #include "mosquitto_internal.h"
 #include "mosquitto_broker.h"
 #include "mosquitto_plugin.h"
+#include "mosquitto_persist.h"
 #include "mosquitto.h"
 #include "tls_mosq.h"
 #include "uthash.h"
@@ -213,6 +214,33 @@ struct mosquitto__auth_plugin_config
 	struct mosquitto__auth_plugin plugin;
 };
 
+struct mosquitto__persist_plugin{
+	void *lib;
+	void *userdata;
+	int (*plugin_version)(void);
+	int (*plugin_init)(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
+	int (*plugin_cleanup)(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);
+	int (*msg_store_add)(void *userdata, uint64_t dbid, const char *source_id, int source_mid, int mid, const char *topic, int qos, int retained, int payloadlen, const void *payload);
+	int (*msg_store_delete)(void *userdata, uint64_t dbid);
+	int (*msg_store_restore)(void *userdata);
+	int (*retain_add)(void *userdata, uint64_t store_id);
+	int (*retain_delete)(void *userdata, uint64_t store_id);
+	int (*retain_restore)(void *userdata);
+	int (*client_add)(void *userdata, const char *client_id, int last_mid, time_t disconnect_t);
+	int (*client_delete)(void *userdata, const char *client_id);
+	int (*client_restore)(void *userdata);
+	int (*sub_add)(void *userdata, const char *client_id, const char *topic, int qos);
+	int (*sub_delete)(void *userdata, const char *client_id, const char *topic);
+	int (*sub_restore)(void *userdata);
+	int (*client_msg_add)(void *userdata, const char *client_id, uint64_t store_id, int mid, int qos, int retained, int direction, int state, int dup);
+	int (*client_msg_delete)(void *userdata, const char *client_id, int mid, int direction);
+	int (*client_msg_update)(void *userdata, const char *client_id, int mid, int direction, int state, int dup);
+	int (*client_msg_restore)(void *userdata);
+	int (*transaction_begin)(void *userdata);
+	int (*transaction_end)(void *userdata);
+	bool restoring;
+};
+
 struct mosquitto__security_options {
 	/* Any options that get added here also need considering
 	 * in config__read() with regards whether allow_anonymous
@@ -303,6 +331,7 @@ struct mosquitto__config {
 	char *persistence_location;
 	char *persistence_file;
 	char *persistence_filepath;
+	char *persistence_plugin;
 	time_t persistent_client_expiration;
 	char *pid_file;
 	bool queue_qos0_messages;
@@ -397,6 +426,7 @@ struct mosquitto_msg_store{
 	uint16_t mid;
 	uint8_t qos;
 	bool retain;
+	bool persisted;
 	uint8_t origin;
 };
 
@@ -462,6 +492,7 @@ struct mosquitto_db{
 	char *config_file;
 	struct mosquitto__config *config;
 	int auth_plugin_count;
+	struct mosquitto__persist_plugin persist_plugin;
 	bool verbose;
 #ifdef WITH_SYS_TREE
 	int subscription_count;
@@ -639,7 +670,7 @@ int db__message_count(int *count);
 int db__message_delete_outgoing(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_state expect_state, int qos);
 int db__message_insert(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir, int qos, bool retain, struct mosquitto_msg_store *stored, mosquitto_property *properties);
 int db__message_release_incoming(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid);
-int db__message_update_outgoing(struct mosquitto *context, uint16_t mid, enum mosquitto_msg_state state, int qos);
+int db__message_update_outgoing(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_state state, int qos);
 int db__message_write(struct mosquitto_db *db, struct mosquitto *context);
 void db__message_dequeue_first(struct mosquitto *context, struct mosquitto_msg_data *msg_data);
 int db__messages_delete(struct mosquitto_db *db, struct mosquitto *context);
@@ -653,6 +684,7 @@ void db__msg_store_ref_dec(struct mosquitto_db *db, struct mosquitto_msg_store *
 void db__msg_store_clean(struct mosquitto_db *db);
 void db__msg_store_compact(struct mosquitto_db *db);
 int db__message_reconnect_reset(struct mosquitto_db *db, struct mosquitto *context);
+void db__client_msg_state_set(struct mosquitto_db *db, struct mosquitto *context, struct mosquitto_client_msg *msg, int state);
 void sys_tree__init(struct mosquitto_db *db);
 void sys_tree__update(struct mosquitto_db *db, int interval, time_t start_time);
 
@@ -665,7 +697,7 @@ int sub__remove(struct mosquitto_db *db, struct mosquitto *context, const char *
 void sub__tree_print(struct mosquitto__subhier *root, int level);
 int sub__clean_session(struct mosquitto_db *db, struct mosquitto *context);
 int sub__retain_queue(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos, uint32_t subscription_identifier);
-int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored);
+int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored, bool persist);
 int sub__topic_tokenise(const char *subtopic, char **local_sub, char ***topics, const char **sharename);
 void sub__topic_tokens_free(struct sub__token *tokens);
 

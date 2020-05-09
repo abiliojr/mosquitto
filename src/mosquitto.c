@@ -51,6 +51,7 @@ Contributors:
 
 #include "mosquitto_broker_internal.h"
 #include "memory_mosq.h"
+#include "persist_plugin.h"
 #include "misc_mosq.h"
 #include "util_mosq.h"
 
@@ -380,6 +381,9 @@ int main(int argc, char *argv[])
 
 	if(pid__write(&int_db)) return 1;
 
+	rc = persist__plugin_init(&int_db);
+	if(rc) return rc;
+
 	rc = db__open(&config, &int_db);
 	if(rc != MOSQ_ERR_SUCCESS){
 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Couldn't open database.");
@@ -438,6 +442,7 @@ int main(int argc, char *argv[])
 
 #ifdef WITH_PERSISTENCE
 	persist__backup(&int_db, true);
+	persist__plugin_cleanup(&int_db); /* FIXME ABILIO: initial code had an if around it */
 #endif
 	session_expiry__remove_all(&int_db);
 

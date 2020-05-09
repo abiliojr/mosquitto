@@ -23,6 +23,7 @@ Contributors:
 
 #include "mosquitto_broker_internal.h"
 #include "memory_mosq.h"
+#include "persist_plugin.h"
 #include "time_mosq.h"
 
 #define BUFLEN 100
@@ -222,6 +223,10 @@ void sys_tree__update(struct mosquitto_db *db, int interval, time_t start_time)
 	now = mosquitto_time();
 
 	if(interval && now - interval > last_update){
+#ifdef WITH_PERSISTENCE
+		persist__transaction_begin(db);
+#endif
+
 		uptime = now - start_time;
 		len = snprintf(buf, BUFLEN, "%d seconds", (int)uptime);
 		db__messages_easy_queue(db, NULL, "$SYS/broker/uptime", SYS_TREE_QOS, len, buf, 1, 60, NULL);
@@ -380,6 +385,9 @@ void sys_tree__update(struct mosquitto_db *db, int interval, time_t start_time)
 		}
 
 		last_update = mosquitto_time();
+#ifdef WITH_PERSISTENCE
+		persist__transaction_end(db);
+#endif
 	}
 }
 
