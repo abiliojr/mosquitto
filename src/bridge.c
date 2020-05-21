@@ -96,24 +96,24 @@ int bridge__new(struct mosquitto_db *db, struct mosquitto__bridge *bridge)
 	new_context->bridge = bridge;
 	new_context->is_bridge = true;
 
-	new_context->username = new_context->bridge->remote_username;
-	new_context->password = new_context->bridge->remote_password;
+	new_context->username = bridge->remote_username;
+	new_context->password = bridge->remote_password;
 
 #ifdef WITH_TLS
-	new_context->tls_cafile = new_context->bridge->tls_cafile;
-	new_context->tls_capath = new_context->bridge->tls_capath;
-	new_context->tls_certfile = new_context->bridge->tls_certfile;
-	new_context->tls_keyfile = new_context->bridge->tls_keyfile;
+	new_context->tls_cafile = bridge->tls_cafile;
+	new_context->tls_capath = bridge->tls_capath;
+	new_context->tls_certfile = bridge->tls_certfile;
+	new_context->tls_keyfile = bridge->tls_keyfile;
 	new_context->tls_cert_reqs = SSL_VERIFY_PEER;
-	new_context->tls_ocsp_required = new_context->bridge->tls_ocsp_required;
-	new_context->tls_version = new_context->bridge->tls_version;
-	new_context->tls_insecure = new_context->bridge->tls_insecure;
-	new_context->tls_alpn = new_context->bridge->tls_alpn;
+	new_context->tls_ocsp_required = bridge->tls_ocsp_required;
+	new_context->tls_version = bridge->tls_version;
+	new_context->tls_insecure = bridge->tls_insecure;
+	new_context->tls_alpn = bridge->tls_alpn;
 	new_context->tls_engine = db->config->default_listener.tls_engine;
 	new_context->tls_keyform = db->config->default_listener.tls_keyform;
 #ifdef FINAL_WITH_TLS_PSK
-	new_context->tls_psk_identity = new_context->bridge->tls_psk_identity;
-	new_context->tls_psk = new_context->bridge->tls_psk;
+	new_context->tls_psk_identity = bridge->tls_psk_identity;
+	new_context->tls_psk = bridge->tls_psk;
 #endif
 #endif
 
@@ -543,6 +543,15 @@ int bridge__register_local_connections(struct mosquitto_db *db)
 	return MOSQ_ERR_SUCCESS;
 }
 
+void bridge__destroy_all(struct mosquitto_db *db)
+{
+	int i;
+
+	for(i=0;i<db->bridge_count; i++){
+		context__cleanup(db, db->bridges[i], true);
+	}
+}
+
 
 void bridge__cleanup(struct mosquitto_db *db, struct mosquitto *context)
 {
@@ -553,6 +562,9 @@ void bridge__cleanup(struct mosquitto_db *db, struct mosquitto *context)
 			db->bridges[i] = NULL;
 		}
 	}
+	mosquitto__free(context->bridge->name);
+	context->bridge->name = NULL;
+
 	mosquitto__free(context->bridge->local_clientid);
 	context->bridge->local_clientid = NULL;
 
@@ -576,6 +588,24 @@ void bridge__cleanup(struct mosquitto_db *db, struct mosquitto *context)
 		mosquitto__free(context->bridge->remote_password);
 	}
 	context->bridge->remote_password = NULL;
+
+	for(i=0; i<context->bridge->address_count; i++){
+		mosquitto__free(context->bridge->addresses[i].address);
+	}
+
+	mosquitto__free(context->bridge->addresses);
+	context->bridge->addresses = NULL;
+
+	for(i=0; i<context->bridge->topic_count; i++){
+		mosquitto__free(context->bridge->topics[i].topic);
+		mosquitto__free(context->bridge->topics[i].local_prefix);
+		mosquitto__free(context->bridge->topics[i].remote_prefix);
+		mosquitto__free(context->bridge->topics[i].local_topic);
+		mosquitto__free(context->bridge->topics[i].remote_topic);
+	}
+
+	mosquitto__free(context->bridge->topics);
+	context->bridge->topics = NULL;
 }
 
 
