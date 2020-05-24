@@ -318,7 +318,7 @@ struct mosquitto__config {
 	bool have_websockets_listener;
 #endif
 #ifdef WITH_BRIDGE
-	struct mosquitto__bridge *bridges;
+	struct mosquitto__bridge **bridges;
 	int bridge_count;
 #endif
 	struct mosquitto__security_options security_options;

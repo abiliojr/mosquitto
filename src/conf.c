@@ -310,39 +310,40 @@ void config__cleanup(struct mosquitto__config *config)
 #ifdef WITH_BRIDGE
 	if(config->bridges){
 		for(i=0; i<config->bridge_count; i++){
-			mosquitto__free(config->bridges[i].name);
-			if(config->bridges[i].addresses){
-				for(j=0; j<config->bridges[i].address_count; j++){
-					mosquitto__free(config->bridges[i].addresses[j].address);
+			mosquitto__free(config->bridges[i]->name);
+			if(config->bridges[i]->addresses){
+				for(j=0; j<config->bridges[i]->address_count; j++){
+					mosquitto__free(config->bridges[i]->addresses[j].address);
 				}
-				mosquitto__free(config->bridges[i].addresses);
+				mosquitto__free(config->bridges[i]->addresses);
 			}
-			mosquitto__free(config->bridges[i].remote_clientid);
-			mosquitto__free(config->bridges[i].remote_username);
-			mosquitto__free(config->bridges[i].remote_password);
-			mosquitto__free(config->bridges[i].local_clientid);
-			mosquitto__free(config->bridges[i].local_username);
-			mosquitto__free(config->bridges[i].local_password);
-			if(config->bridges[i].topics){
-				for(j=0; j<config->bridges[i].topic_count; j++){
-					mosquitto__free(config->bridges[i].topics[j].topic);
-					mosquitto__free(config->bridges[i].topics[j].local_prefix);
-					mosquitto__free(config->bridges[i].topics[j].remote_prefix);
-					mosquitto__free(config->bridges[i].topics[j].local_topic);
-					mosquitto__free(config->bridges[i].topics[j].remote_topic);
+			mosquitto__free(config->bridges[i]->remote_clientid);
+			mosquitto__free(config->bridges[i]->remote_username);
+			mosquitto__free(config->bridges[i]->remote_password);
+			mosquitto__free(config->bridges[i]->local_clientid);
+			mosquitto__free(config->bridges[i]->local_username);
+			mosquitto__free(config->bridges[i]->local_password);
+			if(config->bridges[i]->topics){
+				for(j=0; j<config->bridges[i]->topic_count; j++){
+					mosquitto__free(config->bridges[i]->topics[j].topic);
+					mosquitto__free(config->bridges[i]->topics[j].local_prefix);
+					mosquitto__free(config->bridges[i]->topics[j].remote_prefix);
+					mosquitto__free(config->bridges[i]->topics[j].local_topic);
+					mosquitto__free(config->bridges[i]->topics[j].remote_topic);
 				}
-				mosquitto__free(config->bridges[i].topics);
+				mosquitto__free(config->bridges[i]->topics);
 			}
-			mosquitto__free(config->bridges[i].notification_topic);
+			mosquitto__free(config->bridges[i]->notification_topic);
 #ifdef WITH_TLS
-			mosquitto__free(config->bridges[i].tls_version);
-			mosquitto__free(config->bridges[i].tls_cafile);
-			mosquitto__free(config->bridges[i].tls_alpn);
+			mosquitto__free(config->bridges[i]->tls_version);
+			mosquitto__free(config->bridges[i]->tls_cafile);
+			mosquitto__free(config->bridges[i]->tls_alpn);
 #ifdef FINAL_WITH_TLS_PSK
-			mosquitto__free(config->bridges[i].tls_psk_identity);
-			mosquitto__free(config->bridges[i].tls_psk);
+			mosquitto__free(config->bridges[i]->tls_psk_identity);
+			mosquitto__free(config->bridges[i]->tls_psk);
 #endif
 #endif
+			mosquitto__free(config->bridges[i]);
 		}
 		mosquitto__free(config->bridges);
 	}
@@ -742,24 +743,24 @@ int config__read(struct mosquitto_db *db, struct mosquitto__config *config, bool
 
 #ifdef WITH_BRIDGE
 	for(i=0; i<config->bridge_count; i++){
-		if(!config->bridges[i].name){
+		if(!config->bridges[i]->name){
 			log__printf(NULL, MOSQ_LOG_ERR, "Error: Invalid bridge configuration: bridge name not defined.");
 			return MOSQ_ERR_INVAL;
 		}
-		if(config->bridges[i].addresses  == 0){
+		if(config->bridges[i]->addresses  == 0){
 			log__printf(NULL, MOSQ_LOG_ERR, "Error: Invalid bridge configuration: no remote addresses defined.");
 			return MOSQ_ERR_INVAL;
 		}
-		if(config->bridges[i].topic_count == 0){
+		if(config->bridges[i]->topic_count == 0){
 			log__printf(NULL, MOSQ_LOG_ERR, "Error: Invalid bridge configuration: no topics defined.");
 			return MOSQ_ERR_INVAL;
 		}
 #ifdef FINAL_WITH_TLS_PSK
-		if(config->bridges[i].tls_psk && !config->bridges[i].tls_psk_identity){
+		if(config->bridges[i]->tls_psk && !config->bridges[i]->tls_psk_identity){
 			log__printf(NULL, MOSQ_LOG_ERR, "Error: Invalid bridge configuration: missing bridge_identity.");
 			return MOSQ_ERR_INVAL;
 		}
-		if(config->bridges[i].tls_psk_identity && !config->bridges[i].tls_psk){
+		if(config->bridges[i]->tls_psk_identity && !config->bridges[i]->tls_psk){
 			log__printf(NULL, MOSQ_LOG_ERR, "Error: Invalid bridge configuration: missing bridge_psk.");
 			return MOSQ_ERR_INVAL;
 		}
@@ -1233,19 +1234,26 @@ int config__read_file_core(struct mosquitto__config *config, bool reload, struct
 					if(token){
 						/* Check for existing bridge name. */
 						for(i=0; i<config->bridge_count; i++){
-							if(!strcmp(config->bridges[i].name, token)){
+							if(!strcmp(config->bridges[i]->name, token)){
 								log__printf(NULL, MOSQ_LOG_ERR, "Error: Duplicate bridge name \"%s\".", token);
 								return MOSQ_ERR_INVAL;
 							}
 						}
 
 						config->bridge_count++;
-						config->bridges = mosquitto__realloc(config->bridges, config->bridge_count*sizeof(struct mosquitto__bridge));
+						config->bridges = mosquitto__realloc(config->bridges, config->bridge_count*sizeof(struct mosquitto__bridge *));
 						if(!config->bridges){
 							log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
 							return MOSQ_ERR_NOMEM;
 						}
-						cur_bridge = &(config->bridges[config->bridge_count-1]);
+						cur_bridge = mosquitto__malloc(sizeof(struct mosquitto__bridge));
+						if(!cur_bridge){
+							log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
+							return MOSQ_ERR_NOMEM;
+						}
+
+						config->bridges[config->bridge_count-1] = cur_bridge;
+
 						memset(cur_bridge, 0, sizeof(struct mosquitto__bridge));
 						cur_bridge->name = mosquitto__strdup(token);
 						if(!cur_bridge->name){
@@ -2226,7 +2234,7 @@ static int config__check_bridges(struct mosquitto__config *config)
 	/* Check for bridge duplicate local_clientid, need to generate missing IDs
 	 * first. */
 	for(i=0; i<config->bridge_count; i++){
-		bridge1 = &config->bridges[i];
+		bridge1 = config->bridges[i];
 
 		if(!bridge1->remote_clientid){
 			if(!gethostname(hostname, 256)){
@@ -2253,9 +2261,9 @@ static int config__check_bridges(struct mosquitto__config *config)
 	}
 
 	for(i=0; i<config->bridge_count; i++){
-		bridge1 = &config->bridges[i];
+		bridge1 = config->bridges[i];
 		for(j=i+1; j<config->bridge_count; j++){
-			bridge2 = &config->bridges[j];
+			bridge2 = config->bridges[j];
 			if(!strcmp(bridge1->local_clientid, bridge2->local_clientid)){
 				log__printf(NULL, MOSQ_LOG_ERR, "Error: Bridge local_clientid "
 						"'%s' is not unique. Try changing or setting the "

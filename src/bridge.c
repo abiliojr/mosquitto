@@ -60,9 +60,9 @@ void bridge__start_all(struct mosquitto_db *db)
 	int i;
 
 	for(i=0; i<db->config->bridge_count; i++){
-		if(bridge__new(db, &(db->config->bridges[i]))){
+		if(bridge__new(db, db->config->bridges[i])){
 			log__printf(NULL, MOSQ_LOG_WARNING, "Warning: Unable to connect to bridge %s.", 
-					db->config->bridges[i].name);
+					db->config->bridges[i]->name);
 		}
 	}
 }
