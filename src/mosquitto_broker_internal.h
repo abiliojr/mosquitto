@@ -488,6 +488,11 @@ enum mosquitto_bridge_start_type{
 	bst_once = 3
 };
 
+enum mosquitto_bridge_reload_type{
+	brt_lazy = 0,
+	brt_immediate = 1,
+};
+
 struct mosquitto__bridge_topic{
 	char *topic;
 	int qos;
@@ -540,6 +545,7 @@ struct mosquitto__bridge{
 	bool attempt_unsubscribe;
 	bool initial_notification_done;
 	bool outgoing_retain;
+	enum mosquitto_bridge_reload_type reload_type;
 #ifdef WITH_TLS
 	bool tls_insecure;
 	bool tls_ocsp_required;
@@ -579,6 +585,9 @@ struct mosquitto_db *mosquitto__get_db(void);
  * ============================================================ */
 /* Initialise config struct to default values. */
 void config__init(struct mosquitto_db *db, struct mosquitto__config *config);
+#ifdef WITH_BRIDGE
+void config__bridge_cleanup(struct mosquitto__bridge *bridge);
+#endif
 /* Parse command line options into config. */
 int config__parse_args(struct mosquitto_db *db, struct mosquitto__config *config, int argc, char *argv[]);
 /* Read configuration data from config->config_file into config.
@@ -696,7 +705,7 @@ void log__internal(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #ifdef WITH_BRIDGE
 void bridge__start_all(struct mosquitto_db *db);
 int bridge__new(struct mosquitto_db *db, struct mosquitto__bridge *bridge);
-void bridge__destroy_all(struct mosquitto_db *db);
+void bridge__reload(struct mosquitto_db *db);
 void bridge__cleanup(struct mosquitto_db *db, struct mosquitto *context);
 int bridge__connect(struct mosquitto_db *db, struct mosquitto *context);
 int bridge__connect_step1(struct mosquitto_db *db, struct mosquitto *context);

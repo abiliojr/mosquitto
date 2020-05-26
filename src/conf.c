@@ -254,9 +254,6 @@ void config__init(struct mosquitto_db *db, struct mosquitto__config *config)
 void config__cleanup(struct mosquitto__config *config)
 {
 	int i;
-#ifdef WITH_BRIDGE
-	int j;
-#endif
 
 	mosquitto__free(config->clientid_prefixes);
 	mosquitto__free(config->persistence_location);
@@ -310,40 +307,7 @@ void config__cleanup(struct mosquitto__config *config)
 #ifdef WITH_BRIDGE
 	if(config->bridges){
 		for(i=0; i<config->bridge_count; i++){
-			mosquitto__free(config->bridges[i]->name);
-			if(config->bridges[i]->addresses){
-				for(j=0; j<config->bridges[i]->address_count; j++){
-					mosquitto__free(config->bridges[i]->addresses[j].address);
-				}
-				mosquitto__free(config->bridges[i]->addresses);
-			}
-			mosquitto__free(config->bridges[i]->remote_clientid);
-			mosquitto__free(config->bridges[i]->remote_username);
-			mosquitto__free(config->bridges[i]->remote_password);
-			mosquitto__free(config->bridges[i]->local_clientid);
-			mosquitto__free(config->bridges[i]->local_username);
-			mosquitto__free(config->bridges[i]->local_password);
-			if(config->bridges[i]->topics){
-				for(j=0; j<config->bridges[i]->topic_count; j++){
-					mosquitto__free(config->bridges[i]->topics[j].topic);
-					mosquitto__free(config->bridges[i]->topics[j].local_prefix);
-					mosquitto__free(config->bridges[i]->topics[j].remote_prefix);
-					mosquitto__free(config->bridges[i]->topics[j].local_topic);
-					mosquitto__free(config->bridges[i]->topics[j].remote_topic);
-				}
-				mosquitto__free(config->bridges[i]->topics);
-			}
-			mosquitto__free(config->bridges[i]->notification_topic);
-#ifdef WITH_TLS
-			mosquitto__free(config->bridges[i]->tls_version);
-			mosquitto__free(config->bridges[i]->tls_cafile);
-			mosquitto__free(config->bridges[i]->tls_alpn);
-#ifdef FINAL_WITH_TLS_PSK
-			mosquitto__free(config->bridges[i]->tls_psk_identity);
-			mosquitto__free(config->bridges[i]->tls_psk);
-#endif
-#endif
-			mosquitto__free(config->bridges[i]);
+			config__bridge_cleanup(config->bridges[i]);
 		}
 		mosquitto__free(config->bridges);
 	}
@@ -359,6 +323,49 @@ void config__cleanup(struct mosquitto__config *config)
 		config->log_file = NULL;
 	}
 }
+
+#ifdef WITH_BRIDGE
+void config__bridge_cleanup(struct mosquitto__bridge *bridge)
+{
+	int i;
+	if(bridge == NULL) return;
+
+	mosquitto__free(bridge->name);
+	if(bridge->addresses){
+		for(i=0; i<bridge->address_count; i++){
+			mosquitto__free(bridge->addresses[i].address);
+		}
+		mosquitto__free(bridge->addresses);
+	}
+	mosquitto__free(bridge->remote_clientid);
+	mosquitto__free(bridge->remote_username);
+	mosquitto__free(bridge->remote_password);
+	mosquitto__free(bridge->local_clientid);
+	mosquitto__free(bridge->local_username);
+	mosquitto__free(bridge->local_password);
+	if(bridge->topics){
+		for(i=0; i<bridge->topic_count; i++){
+			mosquitto__free(bridge->topics[i].topic);
+			mosquitto__free(bridge->topics[i].local_prefix);
+			mosquitto__free(bridge->topics[i].remote_prefix);
+			mosquitto__free(bridge->topics[i].local_topic);
+			mosquitto__free(bridge->topics[i].remote_topic);
+		}
+		mosquitto__free(bridge->topics);
+	}
+	mosquitto__free(bridge->notification_topic);
+#ifdef WITH_TLS
+	mosquitto__free(bridge->tls_version);
+	mosquitto__free(bridge->tls_cafile);
+	mosquitto__free(bridge->tls_alpn);
+#ifdef FINAL_WITH_TLS_PSK
+	mosquitto__free(bridge->tls_psk_identity);
+	mosquitto__free(bridge->tls_psk);
+#endif
+#endif
+	mosquitto__free(bridge);
+}
+#endif
 
 static void print_usage(void)
 {
@@ -532,6 +539,8 @@ int config__parse_args(struct mosquitto_db *db, struct mosquitto__config *config
 
 void config__copy(struct mosquitto__config *src, struct mosquitto__config *dest)
 {
+	int i;
+
 	mosquitto__free(dest->security_options.acl_file);
 	dest->security_options.acl_file = src->security_options.acl_file;
 
@@ -595,8 +604,12 @@ void config__copy(struct mosquitto__config *src, struct mosquitto__config *dest)
 #endif
 
 #ifdef WITH_BRIDGE
+	for(i=0;i<dest->bridge_count;i++){
+		if(dest->bridges[i]) config__bridge_cleanup(dest->bridges[i]);
+	}
 	mosquitto__free(dest->bridges);
 	dest->bridges = src->bridges;
+	dest->bridge_count = src->bridge_count;
 #endif
 }
 
@@ -1275,6 +1288,7 @@ int config__read_file_core(struct mosquitto__config *config, bool reload, struct
 						cur_bridge->primary_retry_sock = INVALID_SOCKET;
 						cur_bridge->outgoing_retain = true;
 						cur_bridge->clean_start_local = -1;
+						cur_bridge->reload_type = brt_lazy;
 					}else{
 						log__printf(NULL, MOSQ_LOG_ERR, "Error: Empty connection value in configuration.");
 						return MOSQ_ERR_INVAL;
@@ -1931,6 +1945,29 @@ int config__read_file_core(struct mosquitto__config *config, bool reload, struct
 						}
 					}else{
 						log__printf(NULL, MOSQ_LOG_ERR, "Error: Empty start_type value in configuration.");
+						return MOSQ_ERR_INVAL;
+					}
+#else
+					log__printf(NULL, MOSQ_LOG_WARNING, "Warning: Bridge support not available.");
+#endif
+				}else if(!strcmp(token, "reload_type")){
+#ifdef WITH_BRIDGE
+					if(!cur_bridge){
+						log__printf(NULL, MOSQ_LOG_ERR, "Error: Invalid bridge configuration.");
+						return MOSQ_ERR_INVAL;
+					}
+					token = strtok_r(NULL, " ", &saveptr);
+					if(token){
+						if(!strcmp(token, "lazy")){
+							cur_bridge->reload_type = brt_lazy;
+						}else if(!strcmp(token, "immediate")){
+							cur_bridge->reload_type = brt_immediate;
+						}else{
+							log__printf(NULL, MOSQ_LOG_ERR, "Error: Invalid reload_type value in configuration (%s).", token);
+							return MOSQ_ERR_INVAL;
+						}
+					}else{
+						log__printf(NULL, MOSQ_LOG_ERR, "Error: Empty reload_type value in configuration.");
 						return MOSQ_ERR_INVAL;
 					}
 #else

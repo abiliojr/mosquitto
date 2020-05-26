@@ -203,9 +203,6 @@ int mosquitto_main_loop(struct mosquitto_db *db, mosq_sock_t *listensock, int li
 #endif
 		if(flag_reload){
 			log__printf(NULL, MOSQ_LOG_INFO, "Reloading config.");
-#ifdef WITH_BRIDGE
-			bridge__destroy_all(db);
-#endif
 			config__read(db, db->config, true);
 			mosquitto_security_cleanup(db, true);
 			mosquitto_security_init(db, true);
@@ -213,7 +210,7 @@ int mosquitto_main_loop(struct mosquitto_db *db, mosq_sock_t *listensock, int li
 			log__close(db->config);
 			log__init(db->config);
 #ifdef WITH_BRIDGE
-			bridge__start_all(db);
+			bridge__reload(db);
 #endif
 			flag_reload = false;
 		}

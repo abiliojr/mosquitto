@@ -64,6 +64,7 @@ void bridge__start_all(struct mosquitto_db *db)
 			log__printf(NULL, MOSQ_LOG_WARNING, "Warning: Unable to connect to bridge %s.", 
 					db->config->bridges[i]->name);
 		}
+		db->config->bridges[i] = NULL;
 	}
 }
 
@@ -140,6 +141,12 @@ int bridge__new(struct mosquitto_db *db, struct mosquitto__bridge *bridge)
 #else
 	return bridge__connect(db, new_context);
 #endif
+}
+
+void bridge__disconnect(struct mosquitto_db *db, struct mosquitto *context)
+{
+	send__disconnect(context, MQTT_RC_SUCCESS, NULL);
+	context__cleanup(db, context, true);
 }
 
 #if defined(__GLIBC__) && defined(WITH_ADNS)
@@ -543,15 +550,48 @@ int bridge__register_local_connections(struct mosquitto_db *db)
 	return MOSQ_ERR_SUCCESS;
 }
 
-void bridge__destroy_all(struct mosquitto_db *db)
+void bridge__reload(struct mosquitto_db *db)
 {
 	int i;
+	int j;
 
-	for(i=0;i<db->bridge_count; i++){
-		context__cleanup(db, db->bridges[i], true);
+	// destroy old bridges that dissappeared
+	for(i=0;i<db->bridge_count;i++){
+		for(j=0;j<db->config->bridge_count;j++){
+			if(!strcmp(db->bridges[i]->bridge->name, db->config->bridges[j]->name)) break;
+		}
+
+		if(j==db->config->bridge_count){
+			bridge__disconnect(db, db->bridges[i]);
+		}
+	}
+
+	for(i=0;i<db->config->bridge_count;i++){
+		for(j=0;j<db->bridge_count; j++){
+			if(!strcmp(db->config->bridges[i]->name, db->bridges[j]->bridge->name)) break;
+		}
+
+		if(j==db->bridge_count){
+			// a new bridge was found, create it
+			bridge__new(db, db->config->bridges[i]);
+			db->config->bridges[i] = NULL;
+			continue;
+		}
+
+		if(db->config->bridges[i]->reload_type == brt_immediate){
+			// in this case, an existing bridge should match
+			for(j=0;j<db->bridge_count;j++){
+				if(!strcmp(db->config->bridges[i]->name, db->bridges[j]->bridge->name)) break;
+			}
+
+			assert(j<db->bridge_count);
+			db->bridges[j]->will_delay_interval = 0;
+			bridge__disconnect(db, db->bridges[j]);
+			bridge__new(db, db->config->bridges[i]);
+			db->config->bridges[i] = NULL;
+		}
 	}
 }
-
 
 void bridge__cleanup(struct mosquitto_db *db, struct mosquitto *context)
 {
@@ -559,9 +599,14 @@ void bridge__cleanup(struct mosquitto_db *db, struct mosquitto *context)
 
 	for(i=0; i<db->bridge_count; i++){
 		if(db->bridges[i] == context){
-			db->bridges[i] = NULL;
+			db->bridges[i] = db->bridges[db->bridge_count-1];
+			break;
 		}
 	}
+
+	db->bridge_count--;
+	db->bridges = mosquitto__realloc(db->bridges, db->bridge_count * sizeof(db->bridges[0]));
+
 	mosquitto__free(context->bridge->name);
 	context->bridge->name = NULL;
 
@@ -606,6 +651,9 @@ void bridge__cleanup(struct mosquitto_db *db, struct mosquitto *context)
 
 	mosquitto__free(context->bridge->topics);
 	context->bridge->topics = NULL;
+
+	config__bridge_cleanup(context->bridge);
+	context->bridge = NULL;
 }
 
 
@@ -668,6 +716,22 @@ static void bridge__backoff_reset(struct mosquitto *context)
 	if(bridge->backoff_cap){
 		bridge->restart_timeout = bridge->backoff_base;
 	}
+}
+
+static bool reload_if_needed(struct mosquitto_db *db, struct mosquitto *context)
+{
+	int i;
+
+	for(i=0;i<db->config->bridge_count;i++){
+		if(db->config->bridges[i] && !strcmp(context->bridge->name, db->config->bridges[i]->name)){
+			bridge__disconnect(db, context);
+			bridge__new(db, db->config->bridges[i]);
+			db->config->bridges[i] = NULL;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void bridge_check(struct mosquitto_db *db)
@@ -737,6 +801,8 @@ void bridge_check(struct mosquitto_db *db)
 
 
 		if(context->sock == INVALID_SOCKET){
+			if(reload_if_needed(db, context)) continue;
+
 			/* Want to try to restart the bridge connection */
 			if(!context->bridge->restart_t){
 				context->bridge->restart_t = now+context->bridge->restart_timeout;
