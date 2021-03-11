@@ -490,6 +490,10 @@ int mosquitto_int_option(struct mosquitto *mosq, enum mosq_opt_t option, int val
 			mosq->tcp_nodelay = (bool)value;
 			break;
 
+		case MOSQ_OPT_QUEUE_OUTGOING_QOS_0:
+			mosq->queue_outgoing_qos_0 = (bool) value;
+			break;
+
 		default:
 			return MOSQ_ERR_INVAL;
 	}

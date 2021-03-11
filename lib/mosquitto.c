@@ -192,6 +192,7 @@ int mosquitto_reinitialise(struct mosquitto *mosq, const char *id, bool clean_st
 	mosq->reconnect_delay_max = 1;
 	mosq->reconnect_exponential_backoff = false;
 	mosq->threaded = mosq_ts_none;
+	mosq->queue_outgoing_qos_0 = false;
 #ifdef WITH_TLS
 	mosq->ssl = NULL;
 	mosq->ssl_ctx = NULL;
@@ -201,6 +202,10 @@ int mosquitto_reinitialise(struct mosquitto *mosq, const char *id, bool clean_st
 	mosq->tls_ocsp_required = false;
 #endif
 #ifdef WITH_THREADING
+	pthread_mutexattr_t recursive;
+
+	pthread_mutexattr_init(&recursive);
+	pthread_mutexattr_settype(&recursive, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&mosq->callback_mutex, NULL);
 	pthread_mutex_init(&mosq->log_callback_mutex, NULL);
 	pthread_mutex_init(&mosq->state_mutex, NULL);
@@ -208,7 +213,7 @@ int mosquitto_reinitialise(struct mosquitto *mosq, const char *id, bool clean_st
 	pthread_mutex_init(&mosq->current_out_packet_mutex, NULL);
 	pthread_mutex_init(&mosq->msgtime_mutex, NULL);
 	pthread_mutex_init(&mosq->msgs_in.mutex, NULL);
-	pthread_mutex_init(&mosq->msgs_out.mutex, NULL);
+	pthread_mutex_init(&mosq->msgs_out.mutex, &recursive);
 	pthread_mutex_init(&mosq->mid_mutex, NULL);
 	mosq->thread_id = pthread_self();
 #endif
