@@ -124,7 +124,6 @@ int message__queue(struct mosquitto *mosq, struct mosquitto_message_all *message
 	/* mosq->*_message_mutex should be locked before entering this function */
 	assert(mosq);
 	assert(message);
-	assert(message->msg.qos != 0);
 
 	if(dir == mosq_md_out){
 		DL_APPEND(mosq->msgs_out.inflight, message);
@@ -196,8 +195,10 @@ int message__release_to_inflight(struct mosquitto *mosq, enum mosquitto_msg_dire
 	if(dir == mosq_md_out){
 		DL_FOREACH_SAFE(mosq->msgs_out.inflight, cur, tmp){
 			if(mosq->msgs_out.inflight_quota > 0){
-				if(cur->msg.qos > 0 && cur->state == mosq_ms_invalid){
-					if(cur->msg.qos == 1){
+				if(cur->state == mosq_ms_invalid){
+					if(cur->msg.qos == 0) {
+						cur->state = mosq_ms_publish_qos0;
+					}else if(cur->msg.qos == 1){
 						cur->state = mosq_ms_wait_for_puback;
 					}else if(cur->msg.qos == 2){
 						cur->state = mosq_ms_wait_for_pubrec;
@@ -285,6 +286,16 @@ void message__retry_check(struct mosquitto *mosq)
 
 	DL_FOREACH(mosq->msgs_out.inflight, msg){
 		switch(msg->state){
+			case mosq_ms_publish_qos0:
+				msg->timestamp = now;
+				msg->dup = true;
+				if (send__publish(mosq, (uint16_t)msg->msg.mid, msg->msg.topic, (uint32_t)msg->msg.payloadlen, msg->msg.payload, (uint8_t)msg->msg.qos, msg->msg.retain, msg->dup, msg->properties, NULL, 0)) break;
+
+				DL_DELETE(mosq->msgs_out.inflight, msg);
+				mosq->msgs_out.queue_len--;
+				util__increment_send_quota(mosq);
+				break;
+
 			case mosq_ms_publish_qos1:
 			case mosq_ms_publish_qos2:
 				msg->timestamp = now;
