@@ -203,6 +203,9 @@ static int interruptible_sleep(struct mosquitto *mosq, time_t reconnect_delay)
 	char pairbuf;
 	int maxfd = 0;
 
+	// empty buffer to avoid premature interruption
+	while (read(mosq->sockpairR, &pairbuf, 1) > 0);
+
 	local_timeout.tv_sec = reconnect_delay;
 #ifdef HAVE_PSELECT
 	local_timeout.tv_nsec = 0;
