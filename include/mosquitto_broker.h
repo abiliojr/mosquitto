@@ -70,7 +70,8 @@ enum mosquitto_plugin_event {
 	MOSQ_EVT_EXT_AUTH_START = 4,
 	MOSQ_EVT_EXT_AUTH_CONTINUE = 5,
 	MOSQ_EVT_CONTROL = 6,
-	MOSQ_EVT_MESSAGE = 7,
+	MOSQ_EVT_MESSAGE = 7, // deprecated name
+	MOSQ_EVT_MESSAGE_WRITE = 7,
 	MOSQ_EVT_PSK_KEY = 8,
 	MOSQ_EVT_TICK = 9,
 	MOSQ_EVT_DISCONNECT = 10,
@@ -92,6 +93,7 @@ enum mosquitto_plugin_event {
 	MOSQ_EVT_PERSIST_CLIENT_MSG_UPDATE = 26,
 	MOSQ_EVT_PERSIST_CLIENT_MSG_CLEAR = 27,
 	MOSQ_EVT_PERSIST_CLIENT_MSG_LOAD = 28,
+	MOSQ_EVT_MESSAGE_READ = 29,
 };
 
 /* Data for the MOSQ_EVT_RELOAD event */
@@ -348,7 +350,7 @@ mosq_EXPORT int mosquitto_plugin_set_info(
  *          * MOSQ_EVT_CONTROL
  *              Called on receipt of a $CONTROL message that the plugin has
  *              registered for.
- *          * MOSQ_EVT_MESSAGE
+ *          * MOSQ_EVT_MESSAGE_WRITE
  *              Called for each PUBLISH message after it has been received and
  *              authorised, but before it is sent to subscribing clients. The
  *              contents of the message can be modified.
@@ -395,7 +397,7 @@ mosq_EXPORT int mosquitto_callback_register(
  *          * MOSQ_EVT_EXT_AUTH_START
  *          * MOSQ_EVT_EXT_AUTH_CONTINUE
  *          * MOSQ_EVT_CONTROL
- *          * MOSQ_EVT_MESSAGE
+ *          * MOSQ_EVT_MESSAGE_WRITE
  *          * MOSQ_EVT_PSK_KEY
  *          * MOSQ_EVT_TICK
  *          * MOSQ_EVT_DISCONNECT

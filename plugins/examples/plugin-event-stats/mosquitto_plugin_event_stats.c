@@ -58,7 +58,7 @@ const char evt_topics[][60] = {
 	TOPIC_BASE "auth/ext/start", /* MOSQ_EVT_EXT_AUTH_START */
 	TOPIC_BASE "auth/ext/continue", /* MOSQ_EVT_EXT_AUTH_CONTINUE */
 	TOPIC_BASE "control", /* MOSQ_EVT_CONTROL */
-	TOPIC_BASE "message", /* MOSQ_EVT_MESSAGE */
+	TOPIC_BASE "message_write", /* MOSQ_EVT_MESSAGE_WRITE */
 	TOPIC_BASE "psk_key", /* MOSQ_EVT_PSK_KEY */
 	TOPIC_BASE "tick", /* MOSQ_EVT_TICK */
 	TOPIC_BASE "disconnect", /* MOSQ_EVT_DISCONNECT */
@@ -80,6 +80,7 @@ const char evt_topics[][60] = {
 	TOPIC_BASE "persist/message/client/update", /* MOSQ_EVT_PERSIST_CLIENT_MSG_UPDATE */
 	TOPIC_BASE "persist/message/client/clear", /* MOSQ_EVT_PERSIST_CLIENT_MSG_CLEAR */
 	TOPIC_BASE "persist/message/client/load", /* MOSQ_EVT_PERSIST_CLIENT_MSG_LOAD */
+	TOPIC_BASE "message_read", /* MOSQ_EVT_MESSAGE_READ */
 };
 
 static int callback_tick(int event, void *event_data, void *userdata)
