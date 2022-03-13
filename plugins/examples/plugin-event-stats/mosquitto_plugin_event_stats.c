@@ -81,6 +81,8 @@ const char evt_topics[][60] = {
 	TOPIC_BASE "persist/message/client/clear", /* MOSQ_EVT_PERSIST_CLIENT_MSG_CLEAR */
 	TOPIC_BASE "persist/message/client/load", /* MOSQ_EVT_PERSIST_CLIENT_MSG_LOAD */
 	TOPIC_BASE "message_read", /* MOSQ_EVT_MESSAGE_READ */
+	TOPIC_BASE "subscribe", /* MOSQ_EVT_SUBSCRIBE */
+	TOPIC_BASE "unsubscribe", /* MOSQ_EVT_UNSUBSCRIBE */
 };
 
 static int callback_tick(int event, void *event_data, void *userdata)
