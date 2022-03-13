@@ -194,6 +194,17 @@ int handle__subscribe(struct mosquitto *context)
 			}
 
 			if(allowed){
+				struct mosquitto_base_msg mod_sub;
+				mod_sub.topic = (char *) sub;
+				mod_sub.qos = qos;
+				rc2 = plugin__handle_subscribe(context, &mod_sub);
+				sub = mod_sub.topic;
+				qos = mod_sub.qos;
+				if(rc2){
+					mosquitto__FREE(sub);
+					return rc2;
+				}
+
 				rc2 = sub__add(context, sub, qos, subscription_identifier, subscription_options, &db.subs);
 				if(rc2 > 0){
 					mosquitto__FREE(sub);

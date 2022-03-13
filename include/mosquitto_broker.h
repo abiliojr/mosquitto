@@ -94,6 +94,8 @@ enum mosquitto_plugin_event {
 	MOSQ_EVT_PERSIST_CLIENT_MSG_CLEAR = 27,
 	MOSQ_EVT_PERSIST_CLIENT_MSG_LOAD = 28,
 	MOSQ_EVT_MESSAGE_READ = 29,
+	MOSQ_EVT_SUBSCRIBE = 30,
+	MOSQ_EVT_UNSUBSCRIBE = 31,
 };
 
 /* Data for the MOSQ_EVT_RELOAD event */
@@ -165,7 +167,7 @@ struct mosquitto_evt_control {
 	void *future2[4];
 };
 
-/* Data for the MOSQ_EVT_MESSAGE event */
+/* Data for the MOSQ_EVT_MESSAGE_WRITE and MOSQ_EVT_MESSAGE_READ events */
 struct mosquitto_evt_message {
 	void *future;
 	struct mosquitto *client;
@@ -180,6 +182,15 @@ struct mosquitto_evt_message {
 	void *future2[4];
 };
 
+/* Data for the MOSQ_EVT_SUBSCRIBE event */
+struct mosquitto_evt_subscribe {
+	void *future;
+	struct mosquitto *client;
+	char *subscription;
+	uint8_t qos;
+	char *reason_string; /* reserved */
+	void *future2[4];
+};
 
 /* Data for the MOSQ_EVT_TICK event */
 struct mosquitto_evt_tick {

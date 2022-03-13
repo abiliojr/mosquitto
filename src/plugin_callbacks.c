@@ -43,6 +43,10 @@ static const char *get_event_name(int event)
 			return "message-write";
 		case MOSQ_EVT_MESSAGE_READ:
 			return "message-read";
+		case MOSQ_EVT_SUBSCRIBE:
+			return "subscribe";
+		case MOSQ_EVT_UNSUBSCRIBE:
+			return "unsubscribe";
 		case MOSQ_EVT_TICK:
 			return "tick";
 		case MOSQ_EVT_DISCONNECT:
@@ -119,6 +123,10 @@ static struct mosquitto__callback **plugin__get_callback_base(struct mosquitto__
 			return &security_options->plugin_callbacks.message_write;
 		case MOSQ_EVT_MESSAGE_READ:
 			return &security_options->plugin_callbacks.message_read;
+		case MOSQ_EVT_SUBSCRIBE:
+			return &security_options->plugin_callbacks.subscribe;
+		case MOSQ_EVT_UNSUBSCRIBE:
+			return &security_options->plugin_callbacks.unsubscribe;
 		case MOSQ_EVT_TICK:
 			return &security_options->plugin_callbacks.tick;
 		case MOSQ_EVT_DISCONNECT:
