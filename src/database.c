@@ -29,6 +29,8 @@ Contributors:
 #include "time_mosq.h"
 #include "util_mosq.h"
 
+static struct timespec startup_time;
+
 /**
  * Is this context ready to take more in flight messages right now?
  * @param context the client context of interest
@@ -185,6 +187,8 @@ int db__open(struct mosquitto__config *config)
 	struct mosquitto__subhier *subhier;
 
 	if(!config) return MOSQ_ERR_INVAL;
+
+	clock_gettime(CLOCK_REALTIME, &startup_time);
 
 	db.contexts_by_id = NULL;
 	db.contexts_by_sock = NULL;
@@ -890,9 +894,14 @@ uint64_t db__new_msg_id(void)
 	sec = tmp / 10000000; /* Convert to seconds */
 	nsec = (long)(tmp - sec)*100; /* Remove seconds, convert to counts of 1ns */
 #else
-	clock_gettime(CLOCK_REALTIME, &ts);
-	sec = ts.tv_sec;
-	nsec = ts.tv_nsec;
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts);
+
+	sec = startup_time.tv_sec + ts.tv_sec;
+	nsec = startup_time.tv_nsec + ts.tv_nsec;
+	if (nsec >= 1000000000L) {
+		sec++;
+		nsec -= 1000000000L;
+	}
 #endif
 	tmp = (sec - MOSQ_UUID_EPOCH) & 0x7FFFFFFF;
 	id = id | (tmp << 23); /* Seconds, 31-bits (68 years) */
